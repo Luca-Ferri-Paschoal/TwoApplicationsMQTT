@@ -16,3 +16,5 @@ C:\Users\lucaf\OneDrive\Documentos\Programacao_Youtube\Tutorial_MQTT\TwoApplicat
 C:\Users\lucaf\OneDrive\Documentos\Programacao_Youtube\Tutorial_MQTT\TwoApplicationsUsingMQTT\Application1\obj\x64\Debug\Application1.pdb
 C:\Users\lucaf\OneDrive\Documentos\Programacao_Youtube\Tutorial_MQTT\TwoApplicationsUsingMQTT\Application1\bin\x64\Debug\MQTTnet.dll
 C:\Users\lucaf\OneDrive\Documentos\Programacao_Youtube\Tutorial_MQTT\TwoApplicationsUsingMQTT\Application1\bin\x64\Debug\MQTTnet.xml
+C:\Users\lucaf\OneDrive\Documentos\Programacao_Youtube\Tutorial_MQTT\TwoApplicationsUsingMQTT\Application1\bin\x64\Debug\MqttManager.exe
+C:\Users\lucaf\OneDrive\Documentos\Programacao_Youtube\Tutorial_MQTT\TwoApplicationsUsingMQTT\Application1\bin\x64\Debug\MqttManager.pdb

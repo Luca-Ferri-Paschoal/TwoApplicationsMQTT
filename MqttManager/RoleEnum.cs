@@ -1,4 +1,4 @@
-﻿namespace Application1
+﻿namespace MqttManager
 {
     enum RoleEnum
     {
