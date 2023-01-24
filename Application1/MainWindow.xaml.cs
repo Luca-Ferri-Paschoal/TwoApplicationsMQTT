@@ -17,7 +17,6 @@ namespace Application1
                 ClientId,
                 MyTopic,
                 OtherTopic,
-                InputField,
                 ListOfResponses,
                 MessageError
             );
@@ -25,7 +24,9 @@ namespace Application1
 
         private void PublishButton_Click(object sender, RoutedEventArgs e)
         {
-            MqttManager.Public();
+            MqttManager.Public(InputField.Text);
+
+            InputField.Text = "";
         }
     }
 }

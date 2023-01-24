@@ -7,33 +7,40 @@ using MQTTnet.Client;
 using MQTTnet;
 using MQTTnet.Packets;
 using MQTTnet.Protocol;
+using System.Windows.Media;
 
 namespace MqttManager
 {
     public partial class Mqtt
     {
-        IMqttClient Client = null;
-        MqttClientOptions Options = null;
+        #region Attributes;
+
         string MyTopic;
         string OtherTopic;
-        TextBox InputField = null;
+        string MessageConfirmation = "MessageConfirmation";
+
+        IMqttClient Client = null;
+        MqttClientOptions Options = null;
         StackPanel ChatBox = null;
         TextBlock MessageError = null;
+        TextBlock LastChatChildren = null;
+
+        #endregion
 
         static void Main() { }
+
+        #region Constructor;
 
         public Mqtt(
             string clientId,
             string myTopic,
             string otherTopic,
-            TextBox inputField,
             StackPanel chatBox,
             TextBlock messageError
         )
         {
             MyTopic = myTopic;
             OtherTopic = otherTopic;
-            InputField = inputField;
             ChatBox = chatBox;
             MessageError = messageError;
 
@@ -69,7 +76,7 @@ namespace MqttManager
 
             Client.DisconnectedAsync += async e =>
             {
-                Console.WriteLine("The Broker was disconnected.");
+                Console.WriteLine("The Broker is not connected.");
 
                 await Task.Delay(2000);
 
@@ -80,26 +87,111 @@ namespace MqttManager
             {
                 Console.WriteLine("Message received succesfully");
 
-                ShowMessage(e.ApplicationMessage.Payload);
+                ReceivementManager(e.ApplicationMessage.Payload);
 
                 return Task.CompletedTask;
             };
         }
 
-        private void SetMessageErrorVisibility(Visibility visibility)
+        #endregion;
+
+        #region Receivement;
+
+        private void ReceivementManager(byte[] mqttResponse)
         {
-            if (MessageError.Visibility != visibility)
+            string message = Encoding.UTF8.GetString(mqttResponse);
+
+            if (message == MessageConfirmation)
             {
-                MessageError.Dispatcher.Invoke(new Action(() =>
+                LastChatChildren.Dispatcher.Invoke(new Action(() =>
                 {
-                    MessageError.Visibility = visibility;
+                    LastChatChildren.Foreground = Brushes.Black;
                 }
                 ));
             }
+            else
+            {
+                ShowMessage(message, RoleEnum.Receiver);
+
+                Public(MessageConfirmation);
+            }
         }
+
+        #endregion;
+
+        #region MessageExibition;
+
+        private void ShowMessage(string message, RoleEnum role)
+        {
+            if (message == MessageConfirmation)
+            {
+                return;
+            }
+
+            ChatBox.Dispatcher.Invoke(new Action(() =>
+            {
+                TextBlock Text = new TextBlock
+                {
+                    Foreground = role == RoleEnum.Sender
+                        ? Brushes.LightGray
+                        : Brushes.Black,
+                    Text = message,
+                    Margin = new Thickness(10.0, 10.0, 10.0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                    HorizontalAlignment = role == RoleEnum.Sender
+                        ? HorizontalAlignment.Right
+                        : HorizontalAlignment.Left
+                };
+
+                _ = ChatBox.Children.Add(Text);
+
+                if (role == RoleEnum.Sender)
+                {
+                    LastChatChildren = Text;
+                }
+            }
+            ));
+        }
+
+        #endregion;
+
+        #region Publishment;
+
+        public async void Public(string message)
+        {
+            try
+            {
+                await PublishMessageAsync(message);
+            }
+            catch (Exception)
+            {
+                SetMessageErrorVisibility(Visibility.Visible);
+            }
+        }
+
+        private async Task PublishMessageAsync(string messagePayload)
+        {
+            MqttApplicationMessage message = new MqttApplicationMessageBuilder()
+                                                .WithTopic(OtherTopic)
+                                                .WithResponseTopic(MyTopic)
+                                                .WithPayload(messagePayload)
+                                                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                                                .Build();
+
+            MqttClientPublishResult result = await Client.PublishAsync(message);
+
+            if (result.IsSuccess)
+            {
+                ShowMessage(messagePayload, RoleEnum.Sender);
+            }
+        }
+
+        #endregion;
 
         private async void TryConnect()
         {
+            SetMessageErrorVisibility(Visibility.Visible);
+
             try
             {
                 _ = await Client.ConnectAsync(Options);
@@ -112,65 +204,16 @@ namespace MqttManager
             }
         }
 
-        private void ShowMessage(byte[] mqttResponse)
+        private void SetMessageErrorVisibility(Visibility visibility)
         {
-            AddMessageInTextBlock(Encoding.UTF8.GetString(mqttResponse), RoleEnum.Receiver);
-        }
-
-        private void ShowMessage(string text)
-        {
-            AddMessageInTextBlock(text, RoleEnum.Sender);
-        }
-
-        private void AddMessageInTextBlock(string message, RoleEnum role)
-        {
-            ChatBox.Dispatcher.Invoke(new Action(() =>
+            if (MessageError.Visibility != visibility)
             {
-                TextBlock Text = new TextBlock
+                MessageError.Dispatcher.Invoke(new Action(() =>
                 {
-                    Text = message,
-                    Margin = new Thickness(10.0, 10.0, 10.0, 0),
-                    TextWrapping = TextWrapping.Wrap,
-                    HorizontalAlignment = role == RoleEnum.Sender
-                        ? HorizontalAlignment.Right
-                        : HorizontalAlignment.Left
-                };
-
-                _ = ChatBox.Children.Add(Text);
+                    MessageError.Visibility = visibility;
+                }
+                ));
             }
-            ));
-        }
-
-        public async void Public()
-        {
-            try
-            {
-                await PublishMessageAsync();
-            }
-            catch
-            {
-
-            }
-        }
-
-        private async Task PublishMessageAsync()
-        {
-            string messagePayload = InputField.Text;
-
-            MqttApplicationMessage message = new MqttApplicationMessageBuilder()
-                                                .WithTopic(OtherTopic)
-                                                .WithPayload(messagePayload)
-                                                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                                                .Build();
-
-            MqttClientPublishResult result = await Client.PublishAsync(message);
-
-            if (result.IsSuccess)
-            {
-                ShowMessage(messagePayload);
-            }
-
-            InputField.Text = "";
         }
     }
 }
