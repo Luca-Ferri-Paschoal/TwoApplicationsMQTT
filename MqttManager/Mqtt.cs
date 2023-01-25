@@ -193,7 +193,7 @@ namespace MqttManager
 
         public async void PublishMessage(string text)
         {
-            Message message = new Message(text);
+            Message message = new Message(text.Trim());
             TextBlock textBlock = ShowMessage(message, RoleEnum.Sender);
             ListMessagesNotReceived.Add(message);
             TextBlocksNotConfirmed.Add(textBlock);
