@@ -24,7 +24,7 @@ namespace Application2
 
         private void PublishButton_Click(object sender, RoutedEventArgs e)
         {
-            MqttManager.Public(InputField.Text);
+            MqttManager.PublicMessage(InputField.Text);
 
             InputField.Text = "";
         }

@@ -8,6 +8,7 @@ using MQTTnet;
 using MQTTnet.Packets;
 using MQTTnet.Protocol;
 using System.Windows.Media;
+using System.Collections.Generic;
 
 namespace MqttManager
 {
@@ -15,15 +16,16 @@ namespace MqttManager
     {
         #region Attributes;
 
-        string MyTopic;
-        string OtherTopic;
-        string MessageConfirmation = "MessageConfirmation";
+        private string ClientId;
+        private string MyTopic;
+        private string OtherTopic;
 
-        IMqttClient Client = null;
-        MqttClientOptions Options = null;
-        StackPanel ChatBox = null;
-        TextBlock MessageError = null;
-        TextBlock LastChatChildren = null;
+        private IMqttClient Client = null;
+        private MqttClientOptions Options = null;
+        private StackPanel ChatBox = null;
+        private TextBlock MessageError = null;
+        private List<Message> ListMessagesNotReceived = new List<Message>();
+        private List<TextBlock> TextBlocksNotConfirmed = new List<TextBlock>();
 
         #endregion
 
@@ -39,23 +41,24 @@ namespace MqttManager
             TextBlock messageError
         )
         {
+            ClientId = clientId;
             MyTopic = myTopic;
             OtherTopic = otherTopic;
             ChatBox = chatBox;
             MessageError = messageError;
 
-            SetClientAndOptions(clientId);
+            SetClientAndOptions();
             SetClientEvents();
 
             TryConnect();
         }
 
-        private void SetClientAndOptions(string clientId)
+        private void SetClientAndOptions()
         {
             MqttFactory mqttFactory = new MqttFactory();
             Client = mqttFactory.CreateMqttClient();
             Options = new MqttClientOptionsBuilder()
-                            .WithClientId(clientId)
+                            .WithClientId(ClientId)
                             .WithTcpServer("test.mosquitto.org", 1883)
                             .WithCleanSession()
                             .Build();
@@ -72,6 +75,8 @@ namespace MqttManager
                                                     .Build();
 
                 _ = await Client.SubscribeAsync(topicFilter);
+
+                PublishReconnectConfirmation();
             };
 
             Client.DisconnectedAsync += async e =>
@@ -87,7 +92,10 @@ namespace MqttManager
             {
                 Console.WriteLine("Message received succesfully");
 
-                ReceivementManager(e.ApplicationMessage.Payload);
+                string completeText = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
+                Message message = Message.FromCompleteText(completeText);
+
+                ReceivementManager(message);
 
                 return Task.CompletedTask;
             };
@@ -97,23 +105,45 @@ namespace MqttManager
 
         #region Receivement;
 
-        private void ReceivementManager(byte[] mqttResponse)
+        private void ReceivementManager(Message message)
         {
-            string message = Encoding.UTF8.GetString(mqttResponse);
-
-            if (message == MessageConfirmation)
+            if (message.IsConfirmation)
             {
-                LastChatChildren.Dispatcher.Invoke(new Action(() =>
-                {
-                    LastChatChildren.Foreground = Brushes.Black;
-                }
-                ));
+                ReceiveConfirmation(message.Id);
+            }
+            else if (message.IsReconnect)
+            {
+                RePublish();
             }
             else
             {
-                ShowMessage(message, RoleEnum.Receiver);
+                ReceiveMessage(message);
+            }
+        }
 
-                Public(MessageConfirmation);
+        private void ReceiveMessage(Message message)
+        {
+            ShowMessage(message, RoleEnum.Receiver);
+            PublicConfirmation(message.Id);
+        }
+
+        private void ReceiveConfirmation(string id)
+        {
+            ListMessagesNotReceived.RemoveAll(message => message.Id == id);
+
+            for (int i = 0; i < TextBlocksNotConfirmed.Count; i++)
+            {
+                TextBlock item = TextBlocksNotConfirmed[i];
+
+                item.Dispatcher.Invoke(new Action(() =>
+                {
+                    if (item.Uid == id)
+                    {
+                        item.Foreground = Brushes.Black;
+                        TextBlocksNotConfirmed.RemoveAt(i);
+                    }
+                }
+                ));
             }
         }
 
@@ -121,47 +151,39 @@ namespace MqttManager
 
         #region MessageExibition;
 
-        private void ShowMessage(string message, RoleEnum role)
+        private TextBlock ShowMessage(Message message, RoleEnum role)
         {
-            if (message == MessageConfirmation)
-            {
-                return;
-            }
+            TextBlock Text = null;
 
             ChatBox.Dispatcher.Invoke(new Action(() =>
             {
-                TextBlock Text = new TextBlock
+                Text = new TextBlock
                 {
-                    Foreground = role == RoleEnum.Sender
-                        ? Brushes.LightGray
-                        : Brushes.Black,
-                    Text = message,
+                    Text = message.Text,
                     Margin = new Thickness(10.0, 10.0, 10.0, 0),
                     TextWrapping = TextWrapping.Wrap,
-                    HorizontalAlignment = role == RoleEnum.Sender
-                        ? HorizontalAlignment.Right
-                        : HorizontalAlignment.Left
+                    Uid = message.Id
                 };
 
-                _ = ChatBox.Children.Add(Text);
+                DefineParticularCaracteristics(Text, role);
 
-                if (role == RoleEnum.Sender)
-                {
-                    LastChatChildren = Text;
-                }
+                _ = ChatBox.Children.Add(Text);
             }
             ));
+
+            return Text;
         }
 
         #endregion;
 
         #region Publishment;
 
-        public async void Public(string message)
+        private async void PublishReconnectConfirmation()
         {
             try
             {
-                await PublishMessageAsync(message);
+                Message message = Message.OfReconnection();
+                _ = await PublishMessageAsync(message);
             }
             catch (Exception)
             {
@@ -169,24 +191,86 @@ namespace MqttManager
             }
         }
 
-        private async Task PublishMessageAsync(string messagePayload)
+        public async void PublicMessage(string text)
         {
-            MqttApplicationMessage message = new MqttApplicationMessageBuilder()
-                                                .WithTopic(OtherTopic)
-                                                .WithResponseTopic(MyTopic)
-                                                .WithPayload(messagePayload)
-                                                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
-                                                .Build();
-
-            MqttClientPublishResult result = await Client.PublishAsync(message);
-
-            if (result.IsSuccess)
+            try
             {
-                ShowMessage(messagePayload, RoleEnum.Sender);
+                Message message = new Message(text);
+                TextBlock Text = null;
+
+                MqttClientPublishResult result = await PublishMessageAsync(message);
+
+                if (result.IsSuccess)
+                {
+                    Text = ShowMessage(message, RoleEnum.Sender);
+                }
+
+                ListMessagesNotReceived.Add(message);
+                TextBlocksNotConfirmed.Add(Text);
+            }
+            catch (Exception)
+            {
+                SetMessageErrorVisibility(Visibility.Visible);
             }
         }
 
+        private async void PublicConfirmation(string id)
+        {
+            try
+            {
+                Message message = Message.OfConfirmation(id);
+                _ = await PublishMessageAsync(message);
+            }
+            catch (Exception)
+            {
+                SetMessageErrorVisibility(Visibility.Visible);
+            }
+        }
+
+        private void RePublish()
+        {
+            try
+            {
+                ListMessagesNotReceived.ForEach(async message =>
+                {
+                    _ = await PublishMessageAsync(message);
+                });
+            }
+            catch (Exception)
+            {
+                SetMessageErrorVisibility(Visibility.Visible);
+            }
+        }
+
+        private async Task<MqttClientPublishResult> PublishMessageAsync(Message message)
+        {
+            MqttApplicationMessage messageToSend = new MqttApplicationMessageBuilder()
+                                                .WithTopic(OtherTopic)
+                                                .WithResponseTopic(MyTopic)
+                                                .WithPayload(message.CompleteText)
+                                                .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                                                .Build();
+
+
+            Console.WriteLine(message.CompleteText);
+            return await Client.PublishAsync(messageToSend);
+        }
+
         #endregion;
+
+        private void DefineParticularCaracteristics(TextBlock text, RoleEnum role)
+        {
+            if (role == RoleEnum.Sender)
+            {
+                text.Foreground = Brushes.LightGray;
+                text.HorizontalAlignment = HorizontalAlignment.Right;
+            }
+            else
+            {
+                text.Foreground = Brushes.Black;
+                text.HorizontalAlignment = HorizontalAlignment.Left;
+            }
+        }
 
         private async void TryConnect()
         {
