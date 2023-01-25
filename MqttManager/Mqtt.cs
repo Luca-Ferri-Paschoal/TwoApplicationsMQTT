@@ -124,7 +124,7 @@ namespace MqttManager
         private void ReceiveMessage(Message message)
         {
             ShowMessage(message, RoleEnum.Receiver);
-            PublicConfirmation(message.Id);
+            PublishConfirmation(message.Id);
         }
 
         private void ReceiveConfirmation(string id)
@@ -183,7 +183,7 @@ namespace MqttManager
             try
             {
                 Message message = Message.OfReconnection();
-                _ = await PublishMessageAsync(message);
+                await PublishMessageAsync(message);
             }
             catch (Exception)
             {
@@ -191,22 +191,16 @@ namespace MqttManager
             }
         }
 
-        public async void PublicMessage(string text)
+        public async void PublishMessage(string text)
         {
+            Message message = new Message(text);
+            TextBlock textBlock = ShowMessage(message, RoleEnum.Sender);
+            ListMessagesNotReceived.Add(message);
+            TextBlocksNotConfirmed.Add(textBlock);
+
             try
             {
-                Message message = new Message(text);
-                TextBlock Text = null;
-
-                MqttClientPublishResult result = await PublishMessageAsync(message);
-
-                if (result.IsSuccess)
-                {
-                    Text = ShowMessage(message, RoleEnum.Sender);
-                }
-
-                ListMessagesNotReceived.Add(message);
-                TextBlocksNotConfirmed.Add(Text);
+                await PublishMessageAsync(message);
             }
             catch (Exception)
             {
@@ -214,12 +208,12 @@ namespace MqttManager
             }
         }
 
-        private async void PublicConfirmation(string id)
+        private async void PublishConfirmation(string id)
         {
             try
             {
                 Message message = Message.OfConfirmation(id);
-                _ = await PublishMessageAsync(message);
+                await PublishMessageAsync(message);
             }
             catch (Exception)
             {
@@ -233,7 +227,7 @@ namespace MqttManager
             {
                 ListMessagesNotReceived.ForEach(async message =>
                 {
-                    _ = await PublishMessageAsync(message);
+                    await PublishMessageAsync(message);
                 });
             }
             catch (Exception)
@@ -242,7 +236,7 @@ namespace MqttManager
             }
         }
 
-        private async Task<MqttClientPublishResult> PublishMessageAsync(Message message)
+        private async Task PublishMessageAsync(Message message)
         {
             MqttApplicationMessage messageToSend = new MqttApplicationMessageBuilder()
                                                 .WithTopic(OtherTopic)
@@ -251,9 +245,7 @@ namespace MqttManager
                                                 .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                                                 .Build();
 
-
-            Console.WriteLine(message.CompleteText);
-            return await Client.PublishAsync(messageToSend);
+            await Client.PublishAsync(messageToSend);
         }
 
         #endregion;
