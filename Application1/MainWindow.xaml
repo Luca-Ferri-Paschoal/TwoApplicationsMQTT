@@ -3,13 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Application1"
+        xmlns:local="clr-namespace:Application2"
         mc:Ignorable="d"
         Title="Application1" 
-        MinHeight="500" MinWidth="300"
+        MinHeight="300" MinWidth="300"
         Height="500" Width="300"
-        MaxHeight="500" MaxWidth="300"
-        Loaded="ApplicationLoaded"
+        Loaded="ApplicationLoaded" 
         >
     <Grid>
         <Border
@@ -21,8 +20,8 @@
                 >
 
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="25*"/>
+                    <RowDefinition Height="75*"/>
                 </Grid.RowDefinitions>
 
                 <Grid
@@ -31,20 +30,26 @@
                     >
 
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBox 
-                        BorderBrush="Black"
-                        Grid.Column="0"
-                        TextWrapping="Wrap"
-                        AcceptsReturn="True"
-                        x:Name="InputField"
-                        Padding="10"
-                        ></TextBox>
+                    <ScrollViewer
+                        ScrollViewer.VerticalScrollBarVisibility="Hidden" Grid.ColumnSpan="2"
+                    >
+                        <TextBox 
+                            BorderBrush="Black"
+                            Grid.Column="0"
+                            TextWrapping="Wrap"
+                            AcceptsReturn="True"
+                            x:Name="InputField"
+                            Padding="10"
+                            >
+                        </TextBox>
+                    </ScrollViewer>
                     <Button
-                        Grid.Column="1"
+                        Grid.Column="2"
                         Background="#FF24AFD8"
                         Margin="10,10,0,10"
                         Width="50"
@@ -53,7 +58,8 @@
                         Foreground="White"
                         x:Name="PublishButton"
                         Click="PublishButton_Click"
-                        ></Button>
+                    >
+                    </Button>
                 </Grid>
 
                 <Grid
@@ -79,10 +85,14 @@
                         BorderBrush="Black"
                         >
 
-                        <StackPanel
-                            x:Name="ListOfResponses"
-                            >
-                        </StackPanel>
+                        <ScrollViewer
+                            ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                        >
+                            <StackPanel
+                                x:Name="ListOfResponses"
+                                >
+                            </StackPanel>
+                        </ScrollViewer>
                     </Border>
                 </Grid>
             </Grid>

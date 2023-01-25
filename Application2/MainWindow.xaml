@@ -6,9 +6,8 @@
         xmlns:local="clr-namespace:Application2"
         mc:Ignorable="d"
         Title="Application2" 
-        MinHeight="500" MinWidth="300"
+        MinHeight="300" MinWidth="300"
         Height="500" Width="300"
-        MaxHeight="500" MaxWidth="300"
         Loaded="ApplicationLoaded" 
         >
     <Grid>
@@ -21,8 +20,8 @@
                 >
 
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="25*"/>
+                    <RowDefinition Height="75*"/>
                 </Grid.RowDefinitions>
 
                 <Grid
@@ -31,28 +30,34 @@
                     >
 
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBox 
-                    BorderBrush="Black"
-                    Grid.Column="0"
-                    TextWrapping="Wrap"
-                    AcceptsReturn="True"
-                    x:Name="InputField"
-                    Padding="10"
-                    ></TextBox>
+                    <ScrollViewer
+                        ScrollViewer.VerticalScrollBarVisibility="Hidden" Grid.ColumnSpan="2"
+                    >
+                        <TextBox 
+                            BorderBrush="Black"
+                            Grid.Column="0"
+                            TextWrapping="Wrap"
+                            AcceptsReturn="True"
+                            x:Name="InputField"
+                            Padding="10"
+                            >
+                        </TextBox>
+                    </ScrollViewer>
                     <Button
-                    Grid.Column="1"
-                    Background="#FF24AFD8"
-                    Margin="10,10,0,10"
-                    Width="50"
-                    Height="30"
-                    Content="Publish" 
-                    Foreground="White"
-                    x:Name="PublishButton"
-                    Click="PublishButton_Click"
+                        Grid.Column="2"
+                        Background="#FF24AFD8"
+                        Margin="10,10,0,10"
+                        Width="50"
+                        Height="30"
+                        Content="Publish" 
+                        Foreground="White"
+                        x:Name="PublishButton"
+                        Click="PublishButton_Click"
                     >
                     </Button>
                 </Grid>
@@ -73,17 +78,21 @@
                         Visibility="Collapsed"
                         x:Name="MessageError"
                         />
-                    
+
                     <Border
                         Grid.Row="1"
                         BorderThickness="1"
                         BorderBrush="Black"
                         >
-                        
-                        <StackPanel
-                            x:Name="ListOfResponses"
-                            >
-                        </StackPanel>
+
+                        <ScrollViewer
+                            ScrollViewer.VerticalScrollBarVisibility="Hidden"
+                        >
+                            <StackPanel
+                                x:Name="ListOfResponses"
+                                >
+                            </StackPanel>
+                        </ScrollViewer>
                     </Border>
                 </Grid>
             </Grid>
